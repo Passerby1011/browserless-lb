@@ -70,6 +70,35 @@ GET http://localhost:3000/healthz?token=YOUR_PROXY_AUTH_TOKEN
 
 项目已包含 `api/proxy.js` 和 `vercel.json`，可直接把 `browserless-lb` 作为 Vercel 项目根目录。
 
+Vercel 部署时只应保留 `api/proxy.js` 这一个函数入口；`.vercelignore` 只作为辅助排除规则，不能替代从 GitHub 分支删除旧文件。
+
+如果此前仓库中存在下面这些旧文件，请从 GitHub 分支中删除后再部署，否则 Vercel 可能把它们误识别为 Serverless Function，导致所有请求直接返回 `FUNCTION_INVOCATION_FAILED`，甚至还没进入鉴权逻辑：
+
+```text
+src/server.js
+src/local-server.js
+api/[...path].js
+```
+
+如果使用 Git 更新旧仓库，可以执行：
+
+```bash
+git rm -f src/server.js src/local-server.js "api/[...path].js"
+git add .
+git commit -m "fix Vercel function discovery"
+git push
+```
+
+确认 Vercel Project Settings 的 **Root Directory** 指向包含 `api/proxy.js`、`vercel.json` 和 `package.json` 的目录，然后使用 **Redeploy** 并选择清除构建缓存。部署后先用错误 token 检查入口：
+
+如果通过网页手动上传 GitHub，请确认隐藏目录和文件也已上传：`.vercelignore`、`.github/workflows/docker.yml`。更稳妥的方式是从项目根目录执行 Git 提交和推送。
+
+```bash
+curl -i "https://your-project.vercel.app/healthz?token=wrong"
+```
+
+正常结果应为 `401` 和 `{"error":"Unauthorized"}`。如果仍是 `500 FUNCTION_INVOCATION_FAILED`，请查看 Vercel Function Logs；这不是 Browserless 上游返回的错误，而是部署入口或运行时加载失败。
+
 在 Vercel Project Settings 的 Environment Variables 中设置：
 
 ```text
