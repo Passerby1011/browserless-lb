@@ -34,6 +34,17 @@ export function loadConfig(env = process.env) {
     throw new Error('BROWSERLESS_URL must use http or https');
   }
 
+  const usageApiUrl = env.USAGE_API_URL ?? 'https://api.browserless.io/v1/account/usage';
+  let parsedUsageUrl;
+  try {
+    parsedUsageUrl = new URL(usageApiUrl);
+  } catch {
+    throw new Error('USAGE_API_URL must be a valid http(s) URL');
+  }
+  if (!['http:', 'https:'].includes(parsedUsageUrl.protocol)) {
+    throw new Error('USAGE_API_URL must use http or https');
+  }
+
   return {
     port: positiveInt(env.PORT, 3000, 'PORT'),
     browserlessUrl: parsedUrl,
@@ -43,5 +54,8 @@ export function loadConfig(env = process.env) {
     cooldownMs: positiveInt(env.COOLDOWN_SECONDS, 30, 'COOLDOWN_SECONDS') * 1000,
     upstreamTimeoutMs: positiveInt(env.UPSTREAM_TIMEOUT_SECONDS, 120, 'UPSTREAM_TIMEOUT_SECONDS') * 1000,
     maxRequestBodyBytes: positiveInt(env.MAX_REQUEST_BODY_MB, 32, 'MAX_REQUEST_BODY_MB') * 1024 * 1024,
+    usageApiUrl: parsedUsageUrl,
+    usageTimeoutMs: positiveInt(env.USAGE_TIMEOUT_SECONDS, 10, 'USAGE_TIMEOUT_SECONDS') * 1000,
+    usageCacheMs: positiveInt(env.USAGE_CACHE_SECONDS, 30, 'USAGE_CACHE_SECONDS') * 1000,
   };
 }

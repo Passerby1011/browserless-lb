@@ -66,6 +66,45 @@ curl -X POST "http://localhost:3000/scrape?token=YOUR_PROXY_AUTH_TOKEN" \
 GET http://localhost:3000/healthz?token=YOUR_PROXY_AUTH_TOKEN
 ```
 
+## Web UI 与用量查询
+
+浏览器打开：
+
+```text
+http://localhost:3000/ui?token=YOUR_PROXY_AUTH_TOKEN
+```
+
+页面展示每个 Key 的当前状态（是否冷却中）和账号用量，每 30 秒自动刷新。`/` 根路径也返回同一页面。
+
+对应的 JSON 接口（可用于自己对接监控）：
+
+```text
+GET http://localhost:3000/api/usage?token=YOUR_PROXY_AUTH_TOKEN
+```
+
+返回示例：
+
+```json
+{
+  "generatedAt": "2026-08-12T00:00:00.000Z",
+  "keys": [
+    {
+      "id": 0,
+      "masked": "abcd****wxyz",
+      "coolingDown": false,
+      "cooldownRemainingMs": 0,
+      "usage": { "ok": true, "json": { "units": { "consumed": 5, "total": 100 } }, "statusCode": 200, "raw": "..." }
+    }
+  ]
+}
+```
+
+`masked` 是脱敏后的 Key（完整 Key 不会返回给浏览器）；`usage.json` 会过滤掉响应中的 token/secret 字段。
+
+- 用量默认查询 `https://api.browserless.io/v1/account/usage`，可用 `USAGE_API_URL` 覆盖（例如本地测试时指向假上游）。
+- 每次刷新会为每个 Key 各调用一次 Usage API，结果按 `USAGE_CACHE_SECONDS`（默认 30 秒）缓存，避免频繁刷新打爆账号接口。
+- **注意：Usage API 是账号级的**。如果多个 Key 属于同一个 Browserless 账号，它们显示的是同一份用量；只有不同账号的 Key 才有独立的用量和配额。
+
 ## Vercel 部署
 
 项目已包含 `api/proxy.js` 和 `vercel.json`，可直接把 `browserless-lb` 作为 Vercel 项目根目录。
@@ -111,6 +150,9 @@ MAX_RETRIES
 COOLDOWN_SECONDS
 UPSTREAM_TIMEOUT_SECONDS
 MAX_REQUEST_BODY_MB
+USAGE_API_URL
+USAGE_TIMEOUT_SECONDS
+USAGE_CACHE_SECONDS
 ```
 
 Vercel 部署后可直接沿用 Browserless 原始路径；`/api` 前缀也兼容：
@@ -119,6 +161,13 @@ Vercel 部署后可直接沿用 Browserless 原始路径；`/api` 前缀也兼�
 https://your-project.vercel.app/content?token=YOUR_PROXY_AUTH_TOKEN
 https://your-project.vercel.app/scrape?token=YOUR_PROXY_AUTH_TOKEN
 https://your-project.vercel.app/smart-scrape?token=YOUR_PROXY_AUTH_TOKEN
+```
+
+用量 Web UI 和 JSON 接口在 Vercel 上同样可用：
+
+```text
+https://your-project.vercel.app/ui?token=YOUR_PROXY_AUTH_TOKEN
+https://your-project.vercel.app/usage?token=YOUR_PROXY_AUTH_TOKEN
 ```
 
 Vercel 函数默认最大执行时间配置为 60 秒。建议在 Vercel 中将 `UPSTREAM_TIMEOUT_SECONDS` 设置为 `50` 或更低。

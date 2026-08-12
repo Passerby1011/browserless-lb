@@ -1,11 +1,22 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { once } from 'node:events';
 import { Writable } from 'node:stream';
 
+const usageUpstream = http.createServer((request, response) => {
+  const token = new URL(request.url, 'http://usage.local').searchParams.get('token');
+  response.writeHead(200, { 'content-type': 'application/json' });
+  response.end(JSON.stringify({ units: { consumed: 7, total: 100 }, concurrency: 2, token }));
+});
+usageUpstream.listen(0, '127.0.0.1');
+await once(usageUpstream, 'listening');
+after(() => usageUpstream.close());
+const usagePort = usageUpstream.address().port;
 process.env.BROWSERLESS_KEYS = 'vercel_test_key';
 process.env.PROXY_AUTH_TOKEN = 'vercel_proxy_secret';
+process.env.USAGE_API_URL = `http://127.0.0.1:${usagePort}/v1/account/usage`;
+process.env.USAGE_CACHE_SECONDS = '0';
 const { default: handler, browserlessRequestUrl, config: functionConfig } = await import('../api/proxy.js');
 
 test('sets a generous max duration for slow Browserless REST calls', () => {
@@ -44,6 +55,55 @@ test('serves health checks from a Vercel function', async () => {
     ok: true,
     keys: [{ id: 0, coolingDown: false, cooldownRemainingMs: 0 }],
   });
+});
+
+test('serves the usage web UI from a Vercel function', async () => {
+  const result = {};
+  const response = {
+    headersSent: false,
+    writeHead(statusCode, headers) {
+      result.statusCode = statusCode;
+      result.headers = headers;
+      this.headersSent = true;
+    },
+    end(body) {
+      result.body = body.toString();
+    },
+  };
+  await handler({
+    method: 'GET',
+    url: '/api/proxy.js?__proxy_path=/ui&token=vercel_proxy_secret',
+    headers: {},
+  }, response);
+  assert.equal(result.statusCode, 200);
+  assert.match(result.headers['content-type'], /text\/html/);
+  assert.match(result.body, /Browserless Key Balancer/);
+});
+
+test('serves per-key usage JSON from a Vercel function', async () => {
+  const result = {};
+  const response = {
+    headersSent: false,
+    writeHead(statusCode, headers) {
+      result.statusCode = statusCode;
+      result.headers = headers;
+      this.headersSent = true;
+    },
+    end(body) {
+      result.body = body.toString();
+    },
+  };
+  await handler({
+    method: 'GET',
+    url: '/api/proxy.js?__proxy_path=/usage&token=vercel_proxy_secret',
+    headers: {},
+  }, response);
+  assert.equal(result.statusCode, 200);
+  const data = JSON.parse(result.body);
+  assert.equal(data.keys.length, 1);
+  assert.equal(data.keys[0].usage.ok, true);
+  assert.equal(data.keys[0].usage.json.units.consumed, 7);
+  assert.equal('token' in data.keys[0].usage.json, false);
 });
 
 test('keeps a REST path and JSON body when forwarding from Vercel', async (t) => {

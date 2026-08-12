@@ -2,6 +2,8 @@ import { loadConfig } from '../src/config.js';
 import { KeyPool } from '../src/scheduler.js';
 import { forwardHttp, readBody } from '../src/proxy.js';
 import { isAuthorized, sendUnauthorized } from '../src/auth.js';
+import { fetchUsageForKeys, maskKey } from '../src/usage.js';
+import { renderUsagePage } from '../src/ui.js';
 
 // Vercel reads this static config from the entrypoint. Browserless REST calls
 // (content/scrape/screenshot/...) can run for tens of seconds, so the default
@@ -44,6 +46,33 @@ function sendJson(response, statusCode, payload) {
   response.end(body);
 }
 
+function sendHtml(response, html) {
+  response.writeHead(200, {
+    'content-type': 'text/html; charset=utf-8',
+    'cache-control': 'no-store',
+    'content-length': Buffer.byteLength(html),
+  });
+  response.end(html);
+}
+
+async function usagePayload(pool, config) {
+  const results = await fetchUsageForKeys(pool.keys, {
+    url: config.usageApiUrl,
+    timeoutMs: config.usageTimeoutMs,
+    cacheMs: config.usageCacheMs,
+  });
+  return {
+    generatedAt: new Date().toISOString(),
+    keys: pool.keys.map((key, index) => ({
+      id: key.id,
+      masked: maskKey(key.value),
+      coolingDown: key.cooldownUntil > Date.now(),
+      cooldownRemainingMs: Math.max(0, key.cooldownUntil - Date.now()),
+      usage: results[index] ?? { ok: false, error: 'no result' },
+    })),
+  };
+}
+
 async function requestBody(request, maxBytes) {
   if (request.body !== undefined && request.body !== null) {
     if (Buffer.isBuffer(request.body)) return request.body;
@@ -67,6 +96,16 @@ export default async function handler(request, response) {
     const path = browserlessRequestUrl(request).split('?')[0];
     if (path === '/healthz' && request.method === 'GET') {
       sendJson(response, 200, { ok: true, keys: active.pool.status() });
+      return;
+    }
+
+    if ((path === '/ui' || path === '/') && request.method === 'GET') {
+      sendHtml(response, renderUsagePage());
+      return;
+    }
+
+    if (path === '/usage' && request.method === 'GET') {
+      sendJson(response, 200, await usagePayload(active.pool, active.config));
       return;
     }
 
