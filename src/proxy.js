@@ -54,7 +54,7 @@ function requestOptions(target, request, key, body) {
     headers: {
       ...headers,
       host: target.host,
-      'x-forwarded-for': request.socket.remoteAddress ?? '',
+      'x-forwarded-for': request.socket?.remoteAddress ?? '',
     },
     agent: false,
   };

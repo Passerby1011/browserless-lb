@@ -68,7 +68,7 @@ GET http://localhost:3000/healthz?token=YOUR_PROXY_AUTH_TOKEN
 
 ## Vercel 部署
 
-项目已包含 `api/[...path].js` 和 `vercel.json`，可直接把 `browserless-lb` 作为 Vercel 项目根目录。
+项目已包含 `api/proxy.js` 和 `vercel.json`，可直接把 `browserless-lb` 作为 Vercel 项目根目录。
 
 在 Vercel Project Settings 的 Environment Variables 中设置：
 
@@ -94,8 +94,9 @@ Vercel 函数默认最大执行时间配置为 60 秒。建议在 Vercel 中将 
 
 ### Vercel 限制
 
-- Vercel Functions 适合 `/content`、`/scrape`、`/smart-scrape` 等 HTTP REST API。
-- Vercel 不支持长期 WebSocket `upgrade`；`/chrome`、`/chrome/playwright` 等 CDP WebSocket 请求请使用 Docker 部署。
+- Vercel Functions 只适合 Browserless 的 HTTP REST API，例如 `POST /content`、`POST /scrape`、`POST /smart-scrape`。
+- Vercel 不支持长期 WebSocket `upgrade`；`/chrome`、`/chrome/playwright` 等 CDP WebSocket 请求，以及依赖 Browserless 浏览器会话的客户端，必须使用 Docker 部署。
+- `GET /content` 不是 Browserless REST API。`/content` 必须使用 `POST` 并传递 JSON 请求体，例如 `{ "url": "https://example.com" }`。
 - Key 轮询状态保存在函数实例内存中。Vercel 冷启动或多实例扩容后，不能保证全局严格轮询，但每个实例会正常执行冷却和重试。
 - Vercel 入口要求 `?token=PROXY_AUTH_TOKEN`。请使用足够长的随机值，并通过 HTTPS 调用，避免 Token 泄露。
 
