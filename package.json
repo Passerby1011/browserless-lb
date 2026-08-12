@@ -1,0 +1,14 @@
+{
+  "name": "browserless-key-balancer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A small HTTP/WebSocket load balancer for Browserless API keys.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
