@@ -5,7 +5,7 @@
   "description": "A small HTTP/WebSocket load balancer for Browserless API keys.",
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node src/local-server.js",
     "test": "node --test"
   },
   "engines": {

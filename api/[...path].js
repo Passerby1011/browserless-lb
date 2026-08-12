@@ -16,8 +16,9 @@ function getRuntime() {
 function browserlessRequestUrl(requestUrl) {
   const incoming = new URL(requestUrl || '/', 'http://vercel.local');
   let pathname = incoming.pathname;
-  if (pathname === '/api') pathname = '/';
-  else if (pathname.startsWith('/api/')) pathname = pathname.slice(4) || '/';
+  while (pathname === '/api' || pathname.startsWith('/api/')) {
+    pathname = pathname === '/api' ? '/' : pathname.slice(4) || '/';
+  }
   return `${pathname}${incoming.search}`;
 }
 

@@ -7,6 +7,7 @@ const { default: handler, browserlessRequestUrl } = await import('../api/[...pat
 
 test('maps Vercel API paths back to Browserless paths', () => {
   assert.equal(browserlessRequestUrl('/api/scrape?token=ignored'), '/scrape?token=ignored');
+  assert.equal(browserlessRequestUrl('/api/api/scrape?token=ignored'), '/scrape?token=ignored');
   assert.equal(browserlessRequestUrl('/api/content'), '/content');
   assert.equal(browserlessRequestUrl('/api'), '/');
 });

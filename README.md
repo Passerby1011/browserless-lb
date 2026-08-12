@@ -82,12 +82,12 @@ UPSTREAM_TIMEOUT_SECONDS
 MAX_REQUEST_BODY_MB
 ```
 
-Vercel 部署后，请求路径带 `/api` 前缀：
+Vercel 部署后可直接沿用 Browserless 原始路径；`/api` 前缀也兼容：
 
 ```text
-https://your-project.vercel.app/api/content?token=YOUR_PROXY_AUTH_TOKEN
-https://your-project.vercel.app/api/scrape?token=YOUR_PROXY_AUTH_TOKEN
-https://your-project.vercel.app/api/smart-scrape?token=YOUR_PROXY_AUTH_TOKEN
+https://your-project.vercel.app/content?token=YOUR_PROXY_AUTH_TOKEN
+https://your-project.vercel.app/scrape?token=YOUR_PROXY_AUTH_TOKEN
+https://your-project.vercel.app/smart-scrape?token=YOUR_PROXY_AUTH_TOKEN
 ```
 
 Vercel 函数默认最大执行时间配置为 60 秒。建议在 Vercel 中将 `UPSTREAM_TIMEOUT_SECONDS` 设置为 `50` 或更低。
