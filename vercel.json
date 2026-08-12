@@ -1,14 +1,16 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "functions": {
-    "api/proxy.js": {
-      "maxDuration": 60
-    }
-  },
-  "rewrites": [
+  "builds": [
     {
-      "source": "/:proxy_path*",
-      "destination": "/api/proxy?__proxy_path=:proxy_path*"
+      "src": "api/proxy.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "^/(.*)$",
+      "dest": "/api/proxy.js?__proxy_path=/$1"
     }
   ]
 }

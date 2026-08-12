@@ -70,9 +70,11 @@ GET http://localhost:3000/healthz?token=YOUR_PROXY_AUTH_TOKEN
 
 项目已包含 `api/proxy.js` 和 `vercel.json`，可直接把 `browserless-lb` 作为 Vercel 项目根目录。
 
-Vercel 部署时只应保留 `api/proxy.js` 这一个函数入口；`.vercelignore` 只作为辅助排除规则，不能替代从 GitHub 分支删除旧文件。
+`vercel.json` 使用显式的 `builds` 配置，只构建 `api/proxy.js` 这一个函数。这是 Vercel 的“只包含构建产物”安全行为：即使仓库里还残留 `src/server.js` 之类的旧文件，它们也不会被部署，因此不会再触发 Vercel 自动把 `server.js` 当作 Node 服务入口、导致 `FUNCTION_INVOCATION_FAILED`。`routes` 会把所有路径统一转发到该函数。
 
-如果此前仓库中存在下面这些旧文件，请从 GitHub 分支中删除后再部署，否则 Vercel 可能把它们误识别为 Serverless Function，导致所有请求直接返回 `FUNCTION_INVOCATION_FAILED`，甚至还没进入鉴权逻辑：
+函数最大执行时间在 [api/proxy.js](C:/Users/Administrator/Downloads/lobehub/browserless-lb/api/proxy.js) 中通过 `export const config = { maxDuration: 60 }` 设置，不再依赖 `vercel.json` 的 `functions` 属性。
+
+旧版本（历史遗留）中如果出现过这些文件，建议仍然从 GitHub 分支删除，保持仓库干净：
 
 ```text
 src/server.js
@@ -89,9 +91,9 @@ git commit -m "fix Vercel function discovery"
 git push
 ```
 
-确认 Vercel Project Settings 的 **Root Directory** 指向包含 `api/proxy.js`、`vercel.json` 和 `package.json` 的目录，然后使用 **Redeploy** 并选择清除构建缓存。部署后先用错误 token 检查入口：
-
 如果通过网页手动上传 GitHub，请确认隐藏目录和文件也已上传：`.vercelignore`、`.github/workflows/docker.yml`。更稳妥的方式是从项目根目录执行 Git 提交和推送。
+
+确认 Vercel Project Settings 的 **Root Directory** 指向包含 `api/proxy.js`、`vercel.json` 和 `package.json` 的目录，然后使用 **Redeploy** 并选择清除构建缓存。部署后先用错误 token 检查入口：
 
 ```bash
 curl -i "https://your-project.vercel.app/healthz?token=wrong"
@@ -125,6 +127,7 @@ Vercel 函数默认最大执行时间配置为 60 秒。建议在 Vercel 中将 
 
 - Vercel Functions 只适合 Browserless 的 HTTP REST API，例如 `POST /content`、`POST /scrape`、`POST /smart-scrape`。
 - Vercel 不支持长期 WebSocket `upgrade`；`/chrome`、`/chrome/playwright` 等 CDP WebSocket 请求，以及依赖 Browserless 浏览器会话的客户端，必须使用 Docker 部署。
+- 官方 `browserless` npm SDK 通过 WebSocket/CDP 连接浏览器（`puppeteer.connect` / `browserless.crawl` 等），不能跑在 Vercel 上。使用该 SDK 的客户端必须把地址指向 Docker 版本，例如 `http://<docker-host>:3000`，而不是 Vercel 域名。
 - `GET /content` 不是 Browserless REST API。`/content` 必须使用 `POST` 并传递 JSON 请求体，例如 `{ "url": "https://example.com" }`。
 - Key 轮询状态保存在函数实例内存中。Vercel 冷启动或多实例扩容后，不能保证全局严格轮询，但每个实例会正常执行冷却和重试。
 - Vercel 入口要求 `?token=PROXY_AUTH_TOKEN`。请使用足够长的随机值，并通过 HTTPS 调用，避免 Token 泄露。

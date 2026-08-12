@@ -3,6 +3,11 @@ import { KeyPool } from '../src/scheduler.js';
 import { forwardHttp, readBody } from '../src/proxy.js';
 import { isAuthorized, sendUnauthorized } from '../src/auth.js';
 
+// Vercel reads this static config from the entrypoint. Browserless REST calls
+// (content/scrape/screenshot/...) can run for tens of seconds, so the default
+// function duration is not enough. Keep this in sync with the README.
+export const config = { maxDuration: 60 };
+
 let runtime;
 
 function getRuntime() {

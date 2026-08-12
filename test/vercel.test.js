@@ -6,12 +6,19 @@ import { Writable } from 'node:stream';
 
 process.env.BROWSERLESS_KEYS = 'vercel_test_key';
 process.env.PROXY_AUTH_TOKEN = 'vercel_proxy_secret';
-const { default: handler, browserlessRequestUrl } = await import('../api/proxy.js');
+const { default: handler, browserlessRequestUrl, config: functionConfig } = await import('../api/proxy.js');
+
+test('sets a generous max duration for slow Browserless REST calls', () => {
+  assert.equal(functionConfig.maxDuration, 60);
+});
 
 test('maps Vercel API paths back to Browserless paths', () => {
   assert.equal(browserlessRequestUrl({ url: '/api/proxy?__proxy_path=scrape&token=ignored' }), '/scrape?token=ignored');
   assert.equal(browserlessRequestUrl({ url: '/api/proxy?__proxy_path=api/content&token=ignored' }), '/content?token=ignored');
   assert.equal(browserlessRequestUrl({ url: '/api/proxy?token=ignored', query: { __proxy_path: 'smart-scrape' } }), '/smart-scrape?token=ignored');
+  // The explicit-builds route rewrites every path to /api/proxy.js with a leading slash.
+  assert.equal(browserlessRequestUrl({ url: '/api/proxy.js?__proxy_path=/content&token=ignored' }), '/content?token=ignored');
+  assert.equal(browserlessRequestUrl({ url: '/api/proxy.js?__proxy_path=/api/scrape&token=ignored' }), '/scrape?token=ignored');
 });
 
 test('serves health checks from a Vercel function', async () => {
@@ -29,7 +36,7 @@ test('serves health checks from a Vercel function', async () => {
   };
   await handler({
     method: 'GET',
-    url: '/api/proxy?__proxy_path=healthz&token=vercel_proxy_secret',
+    url: '/api/proxy.js?__proxy_path=/healthz&token=vercel_proxy_secret',
     headers: {},
   }, response);
   assert.equal(result.statusCode, 200);
@@ -76,7 +83,7 @@ test('keeps a REST path and JSON body when forwarding from Vercel', async (t) =>
 
   await freshModule.default({
     method: 'POST',
-    url: '/api/proxy?__proxy_path=content&token=vercel_proxy_secret&timeout=30000',
+    url: '/api/proxy.js?__proxy_path=/content&token=vercel_proxy_secret&timeout=30000',
     headers: { 'content-type': 'application/json' },
     body: { url: 'https://example.com' },
   }, response);
