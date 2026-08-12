@@ -133,3 +133,9 @@ npm test
 ```
 
 运行时依赖只有 Node.js 内置模块，无需安装额外 npm 包。
+
+本地直接启动 Docker 版本：
+
+```bash
+npm run start:local
+```
